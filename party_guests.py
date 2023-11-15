@@ -39,7 +39,7 @@ def _transform_guests_list(party_guests: DataFrame, date_column: str, guests_amo
 
 def _get_peaks(actions: DataFrame) -> DataFrame:
     """
-    We need to select all possible peaks, are there might be many.
+    We need to select all possible peaks, as there might be many.
     """
     peak_window_spec = Window.partitionBy(sf.lit(0))
     peaks = (
