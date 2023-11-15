@@ -1,4 +1,5 @@
-from pyspark.sql import DataFrame, Window, functions as sf
+from pyspark.sql import DataFrame, Window
+from pyspark.sql import functions as sf
 
 
 def calculate_peak_guests_amount(party_guests: DataFrame) -> int:
@@ -23,16 +24,8 @@ def _calculate_cumulative_guests_amount(party_guests: DataFrame) -> DataFrame:
     exits = _transform_guests_list(party_guests, "exit_date", -1)
     all_actions = entrances.union(exits)
 
-    window_spec = (
-        Window
-        .partitionBy(sf.lit(0))
-        .orderBy('datetime')
-        .rangeBetween(Window.unboundedPreceding, 0)
-    )
-    all_actions = all_actions.withColumn(
-        "cumulative_guests_amount",
-        sf.sum("guests_amount_change").over(window_spec)
-    )
+    window_spec = Window.partitionBy(sf.lit(0)).orderBy("datetime").rangeBetween(Window.unboundedPreceding, 0)
+    all_actions = all_actions.withColumn("cumulative_guests_amount", sf.sum("guests_amount_change").over(window_spec))
     return all_actions
 
 
@@ -50,15 +43,9 @@ def _get_peaks(actions: DataFrame) -> DataFrame:
     """
     peak_window_spec = Window.partitionBy(sf.lit(0))
     peaks = (
-        actions
-        .withColumn(
-            "max_guests",
-            sf.max("cumulative_guests_amount").over(peak_window_spec)
-        )
+        actions.withColumn("max_guests", sf.max("cumulative_guests_amount").over(peak_window_spec))
         .where(sf.col("max_guests") == sf.col("cumulative_guests_amount"))
-        .select(
-            sf.col("datetime").alias("peak_time")
-        )
+        .select(sf.col("datetime").alias("peak_time"))
         .distinct()
     )
     return peaks
@@ -71,10 +58,9 @@ def _get_guests_present_at_peaks(peak_actions: DataFrame) -> DataFrame:
     """
     guest_presence_window_spec = Window.partitionBy("guest_id", "peak_time")
     guests_present_at_peaks = (
-        peak_actions
-        .withColumn(
+        peak_actions.withColumn(
             "guest_presence",
-            sf.sum("guests_amount_change").over(guest_presence_window_spec)
+            sf.sum("guests_amount_change").over(guest_presence_window_spec),
         )
         .where(sf.col("guest_presence") == sf.lit(1))
         .select("guest_id")
